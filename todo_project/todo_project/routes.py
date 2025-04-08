@@ -197,12 +197,10 @@ def change_password():
 
     return render_template('change_password.html', title='Change Password', form=form)
 
-    @app.route("/search_tasks", methods=['GET'])
-    @login_required
-    def search_tasks():
-        query = request.args.get('query')
-        if query:
-            tasks = Task.query.filter(Task.content.contains(query), Task.user_id == current_user.id).all()
-        else:
-            tasks = []
-            return render_template('all_tasks.html', title='Search Results', tasks=tasks)
+
+@app.route('/search_tasks', methods=['GET'])
+@login_required
+def search_tasks():
+    query = request.args.get('q', '')
+    tasks = Task.query.filter(Task.content.contains(query), Task.user_id == current_user.id).all()
+    return render_template('all_tasks.html', title='Search Results', tasks=tasks)
