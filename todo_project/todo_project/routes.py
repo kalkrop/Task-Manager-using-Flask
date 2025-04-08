@@ -3,8 +3,7 @@ from flask import render_template, url_for, flash, redirect, request
 from todo_project import app, db, bcrypt
 
 # Import the forms
-from todo_project.forms import (LoginForm, RegistrationForm, UpdateUserInfoForm, 
-                                UpdateUserPassword, TaskForm, UpdateTaskForm)
+from todo_project.forms import (LoginForm, RegistrationForm, UpdateUserInfoForm, UpdateUserPassword, TaskForm, UpdateTaskForm)
 
 # Import the Models
 from todo_project.models import User, Task
@@ -12,19 +11,62 @@ from todo_project.models import User, Task
 # Import 
 from flask_login import login_required, current_user, login_user, logout_user
 
+from flask import Flask, make_response
+
+# Trata-se da política CSP, implementando restrição de form-action e fontes externas específicas
+@app.after_request
+def apply_csp(response):
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' https://code.jquery.com; "
+        "form-action 'self'; " # Implementa envio de formulários à mesma origem
+        #frame-ancestors 'none'; ""
+    )
+    return response
+
+# Impossibilita a verificação da versão do servidor
+@app.after_request
+def apply_security_headers(response):
+    # Content-Security-Policy
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' https://code.jquery.com; "
+        "style-src 'self' https://stackpath.bootstrapcdn.com; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+    )
+    response.headers['Permissions-Policy'] = "camera=(), microphone=(), geolocation=()"
+    return response
+
+# Configuração para tratar os cookies
+@app.after_request
+def set_samesite_cookie(response):
+    if 'Set-Cookie' in response.headers:
+        cookies = response.headers.getlist('Set-Cookie')
+        response.headers['Set-Cookie'] = [cookie.replace('Set-Cookie:', 'Set-Cookie: SameSite=Lax;') for cookie in cookies]
+    return response
+
+# Página de erro 500
+@app.errorhandler(500)
+@app.errorhandler(500)
+def error_500(error):
+    return render_template('errors/500.html'), 500
 
 @app.errorhandler(404)
 def error_404(error):
-    return (render_template('errors/404.html'), 404)
+    return render_template('errors/404.html'), 404
 
 @app.errorhandler(403)
 def error_403(error):
-    return (render_template('errors/403.html'), 403)
+    return render_template('errors/403.html'), 403
 
 @app.errorhandler(500)
 def error_500(error):
-    return (render_template('errors/500.html'), 500)
+    return render_template('errors/500.html'), 500
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return render_template("errors/generic.html", message="An unexpected error occurred"), 500
 
 @app.route("/")
 @app.route("/about")
@@ -44,7 +86,6 @@ def login():
         # Check if the user exists and the password is valid
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user)
-            task_form = TaskForm()
             flash('Login Successfull', 'success')
             return redirect(url_for('all_tasks'))
         else:
@@ -79,7 +120,7 @@ def register():
 @app.route("/all_tasks")
 @login_required
 def all_tasks():
-    tasks = User.query.filter_by(username=current_user.username).first().tasks
+    tasks = Task.query.filter_by(user_id=current_user.id).all()
     return render_template('all_tasks.html', title='All Tasks', tasks=tasks)
 
 
@@ -92,7 +133,7 @@ def add_task():
         db.session.add(task)
         db.session.commit()
         flash('Task Created', 'success')
-        return redirect(url_for('add_task'))
+        return redirect(url_for('all_tasks'))
     return render_template('add_task.html', form=form, title='Add Task')
 
 
@@ -150,8 +191,18 @@ def change_password():
             current_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
             db.session.commit()
             flash('Password Changed Successfully', 'success')
-            redirect(url_for('account'))
+            return redirect(url_for('account'))
         else:
             flash('Please Enter Correct Password', 'danger') 
 
     return render_template('change_password.html', title='Change Password', form=form)
+
+    @app.route("/search_tasks", methods=['GET'])
+    @login_required
+    def search_tasks():
+        query = request.args.get('query')
+        if query:
+            tasks = Task.query.filter(Task.content.contains(query), Task.user_id == current_user.id).all()
+        else:
+            tasks = []
+            return render_template('all_tasks.html', title='Search Results', tasks=tasks)
