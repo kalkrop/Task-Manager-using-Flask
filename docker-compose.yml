@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    image: task-manager:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=development
+    logging:
+      driver: "syslog"
+      options:
+        syslog-address: "udp://localhost:514"

@@ -155,4 +155,3 @@ def change_password():
             flash('Please Enter Correct Password', 'danger') 
 
     return render_template('change_password.html', title='Change Password', form=form)
-
