@@ -103,7 +103,7 @@ jobs:
       - name: Upload ZAP Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: zap_scan_report
+          name: zap-scan-report
           path: zap_scan_results/
       - name: Check ZAP Alerts
         run: |
