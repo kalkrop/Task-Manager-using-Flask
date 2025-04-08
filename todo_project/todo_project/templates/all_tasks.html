@@ -2,6 +2,21 @@
 
 {% block content %}
 
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="alert alert-{{ messages[0][0] }}">
+      {{ messages[0][1] }}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<form method="GET" action="{{ url_for('search_tasks') }}" class="mb-4">
+    <div class="input-group">
+        <input type="text" class="form-control" name="query" placeholder="Pesquisar tarefa">
+        <button class="btn btn-primary" type="submit">Pesquisar</button>
+    </div>
+</form>
+
 <!-- View All Tasks -->
 {% if tasks %}
 <table class="table table-bordered">
@@ -22,6 +37,9 @@
                 <a href="{{ url_for('update_task', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm">Update</a>
             </td>
             
+            <td class="text-center">
+                <a href="{{ url_for('update_task', task_id=task.id) }}" class="btn btn-outline-secondary btn-sm">Update</a>
+            </td>
             <td class="text-center">
                 <a href="{{ url_for('delete_task', task_id=task.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
             </td>
