@@ -100,7 +100,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://localhost:5000"
-      
+      - name: Upload ZAP Scan Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap_scan_report
+          path: zap_scan_results/
       - name: Check ZAP Alerts
         run: |
           alerts=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
