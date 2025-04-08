@@ -7,5 +7,5 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 5000
-
-CMD ["python", "todo_project/run.py"]
+ENV FLASK_APP=todo_project/run.py
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
