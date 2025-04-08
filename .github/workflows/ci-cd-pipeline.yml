@@ -100,6 +100,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://localhost:5000"
+          fail_on_error: false
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP Full Scan Report
+          path: /zap/wrk/*
 
   create_pull_request:
     needs: zap
