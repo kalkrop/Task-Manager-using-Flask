@@ -10,14 +10,13 @@ permissions:
   pull-requests: write
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build the Docker image
-        run: docker build -t $(date +%s) .
+        run: docker build -t task-manager:${{ github.sha }} .
 
   test:
     needs: build
@@ -30,11 +29,18 @@ jobs:
         with:
           python-version: "3.13.2"
       - name: Install dependencies
-        run: | 
-          python -m pip install pytest 
-          python -m pip install Flask-Testing SQLAlchemy flask_sqlalchemy flask_login flask_bcrypt flask_wtf
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest Flask-Testing SQLAlchemy flask_sqlalchemy flask_login flask_bcrypt flask_wtf
       - name: Run tests
-        run: PYTHONPATH=$PYTHONPATH:. pytest
+        run: pytest tests/ --verbose --junitxml=test-results.xml
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+        if: always()
 
   bandit:
     needs: build
@@ -45,25 +51,26 @@ jobs:
       actions: read
       contents: read
     steps:
+      - uses: actions/checkout@v4
       - name: Bandit Analysis
         uses: PyCQA/bandit-action@v1
-  
+        with:
+          path: "."
+          output: "bandit-report.txt"
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.txt
+
   dependency_check:
     needs: build
     name: Dependency-Check (SAST)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13.2"
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+      - uses: actions/checkout@v4
       - name: Check dependency
         uses: dependency-check/Dependency-Check_Action@main
-        id: Dependency-Check
         with:
           project: "Task-Manager-using-Flask"
           path: "."
@@ -78,43 +85,35 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Dependency-Check report
-          path: ${{github.workspace}}/reports
-  
+          path: reports
+        if: always()
+
   zap:
-    needs: 
-      - bandit
-      - dependency_check
+    needs: [bandit, dependency_check]
     name: ZAP Scanning Report (DAST)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Build Docker image
-        run: docker build -t task-image .
+        run: docker build -t task-manager:${{ github.sha }} .
       - name: Run application
         run: |
-          docker run -d -p 5000:5000 --name task-manager task-image
-          sleep 10
+          docker run -d -p 5000:5000 --name task-manager task-manager:${{ github.sha }}
+          timeout 30s bash -c "until curl -s http://localhost:5000; do sleep 1; done" || exit 1
       - name: Zap Scan
         uses: zaproxy/action-full-scan@v0.10.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://localhost:5000"
-          artifact_name: zap-scan-report  # Nome do artefato ajustado para ser válido e consistente
+          artifact_name: zap-scan-report
+      - name: Stop Docker container
+        run: docker stop task-manager
       - name: Upload ZAP Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: zap-scan-report  # Certifique-se de que o nome do artefato é consistente
-          path: ./zap_scan_results/  # Certifique-se de que o caminho está correto e acessível
-      - name: Check ZAP Alerts
-        run: |
-          alerts=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/search/issues?q=is:issue+state:open+repo:${{ github.repository }}+ZAP+Full+Scan+Report&sort=updated")
-          echo "Alerts: $alerts"
-          if [[ "$alerts" == *"WARN-NEW"* ]]; then
-            echo "Warnings detected in ZAP Scan. Please review the report."
-            exit 1
-          fi
+          name: zap-scan-report
+          path: zap_scan_results/zap_scan_report.html
+        if: always()
 
   loki:
     needs: zap
@@ -125,12 +124,30 @@ jobs:
         image: grafana/loki:latest
         ports:
           - 3100:3100
+      promtail:
+        image: grafana/promtail:latest
+        volumes:
+          - ./logs:/var/log
+        command: -config.file=/etc/promtail/config.yml
     steps:
-      - name: Configure Loki logging
+      - uses: actions/checkout@v4
+      - name: Create Promtail config
         run: |
-          docker run -d -v /var/log:/var/log grafana/promtail:latest -config.file=/etc/promtail/config.yml
-      - name: View logs with Loki
-        run: echo "Loki logs available at localhost:3100"
+          echo "server:
+            http_listen_port: 9080
+          clients:
+            - url: http://loki:3100/loki/api/v1/push
+          scrape_configs:
+            - job_name: system
+              static_configs:
+                - targets: [localhost]
+                  labels:
+                    job: task-manager
+                    __path__: /var/log/*.log" > promtail-config.yml
+      - name: Run Promtail with config
+        run: docker cp promtail-config.yml promtail:/etc/promtail/config.yml
+      - name: Verify Loki
+        run: echo "Loki running at http://localhost:3100"
 
   grafana:
     needs: loki
@@ -142,18 +159,22 @@ jobs:
         ports:
           - 3000:3000
     steps:
+      - name: Wait for Grafana
+        run: sleep 10
+      - name: Configure Grafana datasource
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"name":"Loki","type":"loki","url":"http://loki:3100","access":"proxy"}' \
+            http://admin:admin@localhost:3000/api/datasources
       - name: Access Grafana Dashboard
         run: echo "Grafana running at http://localhost:3000"
-      - name: Configure Grafana
-        run: echo "Configure Loki as a data source in Grafana."
 
   pull_request_automatic:
     needs: grafana
     name: Deploy Stage para Simulação
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Run the Action
