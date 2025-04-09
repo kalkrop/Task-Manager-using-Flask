@@ -103,11 +103,11 @@ jobs:
       - name: Upload ZAP Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: zap_scan_report
+          name: zap-scan-report
           path: zap_scan_results/
       - name: Check ZAP Alerts
         run: |
-          alerts=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          alerts=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/search/issues?q=is:issue+state:open+repo:${{ github.repository }}+ZAP+Full+Scan+Report&sort=updated")
           echo "Alerts: $alerts"
 
