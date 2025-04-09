@@ -103,8 +103,8 @@ jobs:
       - name: Upload ZAP Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: zap-scan-report  # Corrigido o nome do artefato para ser válido
-          path: zap_scan_results/
+          name: zap_scan_report  # Nome do artefato ajustado para ser válido
+          path: ./zap_scan_results/  # Certifique-se de que o caminho está correto e acessível
       - name: Check ZAP Alerts
         run: |
           alerts=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
