@@ -107,12 +107,18 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        flash(f'Account Created For {form.username.data}', 'success')
-        return redirect(url_for('login'))
+        try:
+            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+            user = User(username=form.username.data, password=hashed_password)
+            db.session.add(user)
+            db.session.commit()
+            flash(f'Account Created For {form.username.data}', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while creating your account. Please try again.', 'danger')
+            # Optionally log the exception for debugging
+            print(f"Error: {e}")
 
     return render_template('register.html', title='Register', form=form)
 
