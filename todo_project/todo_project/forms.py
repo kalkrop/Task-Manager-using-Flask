@@ -1,4 +1,3 @@
-
 from flask_wtf import FlaskForm
 
 # Form Fields
@@ -16,7 +15,13 @@ from flask_login import current_user
 class RegistrationForm(FlaskForm):
     username = StringField(label='Username', validators=[DataRequired(), Length(min=3, max=10)])
     password = PasswordField(label='Password', validators=[DataRequired()])
-    confirm_password = PasswordField(label='Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    confirm_password = PasswordField(
+        label='Confirm Password',
+        validators=[
+            DataRequired(message="This field is required."),
+            EqualTo('password', message="Passwords must match.")
+        ]
+    )
     submit = SubmitField(label='Register')
 
     # Check wheather user already exists in the Database
