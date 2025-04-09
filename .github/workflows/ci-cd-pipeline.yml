@@ -128,7 +128,7 @@ jobs:
         image: grafana/promtail:latest
         volumes:
           - ./logs:/var/log
-        command: -config.file=/etc/promtail/config.yml
+          - ./promtail-config.yml:/etc/promtail/config.yml
     steps:
       - uses: actions/checkout@v4
       - name: Create Promtail config
@@ -144,8 +144,6 @@ jobs:
                   labels:
                     job: task-manager
                     __path__: /var/log/*.log" > promtail-config.yml
-      - name: Run Promtail with config
-        run: docker cp promtail-config.yml promtail:/etc/promtail/config.yml
       - name: Verify Loki
         run: echo "Loki running at http://localhost:3100"
 
