@@ -100,10 +100,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://localhost:5000"
+          artifact_name: zap-scan-report  # Nome do artefato ajustado para ser válido e consistente
       - name: Upload ZAP Scan Results
         uses: actions/upload-artifact@v4
         with:
-          name: zap_scan_report  # Nome do artefato ajustado para ser válido
+          name: zap-scan-report  # Certifique-se de que o nome do artefato é consistente
           path: ./zap_scan_results/  # Certifique-se de que o caminho está correto e acessível
       - name: Check ZAP Alerts
         run: |
