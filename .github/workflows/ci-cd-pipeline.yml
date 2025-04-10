@@ -1,4 +1,3 @@
-
 name: CI/CD Pipeline
 
 on:
@@ -95,12 +94,21 @@ jobs:
       - name: Run application
         run: |
           docker run -d -p 5000:5000 --name task-manager task-image
-          sleep 20
+          timeout 60s bash -c "until curl -s -v http://localhost:5000; do sleep 2; echo 'Waiting for app...'; done" || (docker logs task-manager && exit 1)
       - name: Zap Scan
         uses: zaproxy/action-full-scan@v0.10.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          target: "http://localhost:5000"
+          target: "http://127.0.0.1:5000"
+          artifact_name: zap-scan-report
+      - name: Stop Docker container
+        run: docker stop task-manager
+      - name: Upload ZAP Scan Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-scan-report
+          path: zap_scan_results/zap_scan_report.html
 
   loki:
     needs: zap
