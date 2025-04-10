@@ -68,6 +68,7 @@ instance/
 # Scrapy stuff:
 .scrapy
 .vscode
+.BACKUP_todo_project
 
 # Sphinx documentation
 docs/_build/
