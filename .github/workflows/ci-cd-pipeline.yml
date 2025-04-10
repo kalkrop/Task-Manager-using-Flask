@@ -100,7 +100,17 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://127.0.0.1:5000"
-          artifact_name: zap-scan-report-${{ github.run_id }} # Nome único por execução
+          artifact_name: ""
+      - name: Verify Report Files
+        run: ls -l report_html.html report_json.json report_md.md  # Confirma que os arquivos existem
+      - name: Upload ZAP Scan Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-${{ github.run_id }}  # Nome único e simples
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
       - name: Stop Docker container
         run: docker stop task-manager
 
