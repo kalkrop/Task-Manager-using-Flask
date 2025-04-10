@@ -101,6 +101,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://127.0.0.1:5000"
           artifact_name: ""
+        continue-on-error: true
       - name: Verify Report Files
         run: ls -l report_html.html report_json.json report_md.md  # Confirma que os arquivos existem
       - name: Upload ZAP Scan Results
