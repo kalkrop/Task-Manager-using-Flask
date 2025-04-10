@@ -100,7 +100,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: "http://127.0.0.1:5000"
-          artifact_name: zap-scan-report
+          artifact_name: zap-scan-report-${{ github.run_id }} # Nome único por execução
       - name: Stop Docker container
         run: docker stop task-manager
 
