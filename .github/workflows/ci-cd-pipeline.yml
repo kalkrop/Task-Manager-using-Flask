@@ -103,12 +103,6 @@ jobs:
           artifact_name: zap-scan-report
       - name: Stop Docker container
         run: docker stop task-manager
-      - name: Upload ZAP Scan Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: zap-scan-report
-          path: zap_scan_results/zap_scan_report.html
 
   loki:
     needs: zap
